@@ -4,7 +4,6 @@
 import sys
 sys.path.append('~/Dexter/GrovePi/Software/Python')
 import time
-import grovepi
 from grove_rgb_lcd import *
 
 # Grove Ultrasonic Ranger connected to digital port 2
