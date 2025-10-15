@@ -2,7 +2,8 @@
 # Names: Peter Connolly and Christopher Kim
 # Lab 6 – GrovePi Sensors
 
-import time
+import time, sys, os
+sys.path.append(os.path.expanduser('~/Dexter/GrovePi/Software/Python'))
 import grovepi
 from grove_rgb_lcd import *
 
