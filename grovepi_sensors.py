@@ -1,55 +1,75 @@
 # grovepi_sensors.py
 # Team members: Peter Connolly and Christopher Kim
 
-import sys
-sys.path.append('~/Dexter/GrovePi/Software/Python')
-import time
+import sys, os, time
 
-# Grove Ultrasonic Ranger connected to digital port 2
+# Ensure GrovePi example paths work even when run via SSH
+sys.path.append(os.path.expanduser('~/Dexter/GrovePi/Software/Python'))
+sys.path.append(os.path.expanduser('~/Dexter/GrovePi/Software/Python/grove_rgb_lcd'))
+
+import grovepi
+from grove_rgb_lcd import *
+
+# -----------------------
+# Port configuration
+# -----------------------
+# Ultrasonic Ranger on digital D2
 ultrasonic_ranger = 2
 
-# Potentiometer (rotary angle sensor) connected to analog port A0
+# Rotary Angle Sensor (potentiometer) on analog A0
 potentiometer = 0
 grovepi.pinMode(potentiometer, "INPUT")
 
-# Clear LCD screen before starting main loop
-setText("")  # one-time clear; subsequent writes use setText_norefresh
-
-def pad16(s: str) -> str:
-    """Return string exactly 16 chars wide to avoid ghosting on norefresh writes."""
-    s = s[:16]
+# -----------------------
+# Helpers
+# -----------------------
+def pad16(s):
+    """Return a string padded or trimmed to exactly 16 chars for stable norefresh writes."""
+    s = str(s)
+    if len(s) > 16:
+        return s[:16]
     return s + (" " * (16 - len(s)))
 
+# One-time clear, then only use norefresh
+setText("")
+
+# Optional: calm the LCD backlight to a neutral white
+setRGB(255, 255, 255)
+
+# -----------------------
+# Main loop
+# -----------------------
 while True:
     try:
-        # 1) Read distance in centimeters from Ultrasonic Ranger (raw integer)
-        dist_cm = grovepi.ultrasonicRead(ultrasonic_ranger)  # returns int distance in cm
+        # Read raw ultrasonic distance in cm (integer)
+        dist_cm = grovepi.ultrasonicRead(ultrasonic_ranger)
 
-        # 2) Read threshold from rotary angle sensor (raw 0..1023)
-        thresh = grovepi.analogRead(potentiometer)  # returns int 0..1023
+        # Read raw threshold from rotary (0..1023)
+        thresh = grovepi.analogRead(potentiometer)
 
-        # 3) Determine presence and format LCD text
-        # Top line: "<threshold>[ space][ OBJ PRES]"
+        # Determine object presence using raw comparison
         obj_present = dist_cm < thresh
+
+        # Top line: "<thresh> [OBJ PRES]"
         if obj_present:
-            top = f"{thresh} OBJ PRES"
+            top_line = f"{thresh} OBJ PRES"
         else:
-            top = f"{thresh} "
+            top_line = f"{thresh} "
 
-        # Bottom line: current raw ultrasonic measurement (just the integer)
-        bottom = f"{dist_cm}"
+        # Bottom line: raw ultrasonic value
+        bottom_line = f"{dist_cm}"
 
-        # Pad both lines to 16 characters so old characters don't linger
-        top_padded = pad16(top)
-        bottom_padded = pad16(bottom)
+        # Pad to 16 chars to prevent ghost characters on norefresh writes
+        top_line = pad16(top_line)
+        bottom_line = pad16(bottom_line)
 
-        # Write without refreshing to prevent blinking
-        setText_norefresh(top_padded + "\n" + bottom_padded)
+        # Non-refresh write per lab requirement
+        setText_norefresh(top_line + "\n" + bottom_line)
 
-        # Modest polling rate; keeps CPU usage down and LCD steady
+        # Reasonable update rate
         time.sleep(0.2)
 
     except IOError:
-        # Handle I2C or sensor read hiccups without crashing the loop
-        print("Error")
+        # Handle transient I2C or sensor hiccups without crashing
+        # Keep LCD text as-is; just wait and retry
         time.sleep(0.2)
